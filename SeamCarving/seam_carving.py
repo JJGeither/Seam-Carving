@@ -43,11 +43,18 @@ def calculate_cumulative(energy_map):
     print(f"{r} x {c}")
 
     #Now continue creating the seam
-    currentCoord = min_coord
-    for j in range(c - 1, 0, -1):
-        min_coord = (min_coord[0], j)
-        print(f"{min_coord[0]} + {j}")
-        print(min_coord)
+
+    for j in range(r ):
+        print(f"{j} : THIS")
+        below = (j, min_coord[1])
+        belowLeft = (j, min_coord[1] - 1) if min_coord[1] - 1 > 0 else below
+        belowRight = (j, min_coord[1] + 1) if min_coord[1] + 1 < 0 else below
+        min_coord = belowLeft
+        if (M[below] < M[min_coord]) :
+            min_coord = below
+        if (M[belowRight] < M[min_coord]):
+            min_coord = belowRight
+
         backtrack[min_coord] = 100;
 
     processed_filename = filename[:-4] + '_seam_' + str(vert_seams) + '_' + str(horizontal_seams) + '.pgm'
