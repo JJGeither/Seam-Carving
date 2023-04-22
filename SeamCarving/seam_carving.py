@@ -5,20 +5,20 @@ import sys
 
 def compute_energy_map(img):
     r, c = img.shape
-    e = np.zeros_like(img, dtype=np.uint16)
-    #e(i,j) = |v(i,j)-v(i-1,j)|+ |v(i,j)-v(i+1,j)|+ |v(i,j)-v(i,j-1)|+ |v(i,j)-v(i,j+1)|
+    e = np.zeros_like(img, dtype=np.uint32)
 
-    for i in range(r):
-        for j in range(c):
-            up = img[i - 1, j] if i - 1 >= 0 else 0
-            down = img[i + 1, j] if i + 1 < r else 0
-            left = img[i, j - 1] if j - 1 >= 0 else 0
-            right = img[i, j + 1] if j + 1 < c else 0
+    for j in range(0, c - 1):
+        for i in range(0, r - 1):
 
-            e[i, j] = np.abs(img[i, j] - up) + np.abs(img[i, j] - down) + np.abs(img[i, j] - left) + np.abs(
-                img[i, j] - right)
+           # print(f"Pixel value at ({i}, {j}): {img[i, j]}; Image value: {img[i, j]}")
+            left = img[i - 1, j] if i > 0 else 0
+            right = img[i + 1, j] if i < r - 1 else 0
+            up = img[i, j - 1] if j > 0 else 0
+            down = img[i, j + 1] if j < c - 1 else 0
+            e[i, j] = np.abs(img[i, j] - up) + np.abs(img[i, j] - down) + np.abs(img[i, j] - left) + np.abs(img[i, j] - right)
+            #print(f"Pixel value at ({i}, {j}): {img[i, j]}; Energy value: {e[i, j]}")
+
     return e
-
 
 
 def calculate_cumulative(energy_map):
@@ -27,15 +27,34 @@ def calculate_cumulative(energy_map):
     #(i = x-axis; j = y-axis):
 
     #M(i,j) = e(i,j) + min{M(i-1,j-1), M(i, j-1), M(i+1,j-1))
-
-
     M = energy_map.astype(np.int32).copy()
     backtrack = np.zeros_like(M, int)
 
-    for i in range(1, r):
-        for j in range(0, c):
-            M[i,j] = e[i,j] + np.min(M[i - 1, j - 1], M[i, j - 1], M[i + 1, j - 1])
+    for j in range(c - 1):
+        for i in range(r - 1):
+            M[i,j] = e[i,j] + np.min([M[i - 1, j - 1], M[i, j - 1], M[i + 1, j - 1]])
+
+    # Find the minimum value in the first row of M
+    min_val = np.min(M[:, c - 1])
+    min_index = np.argmin(M[:, c - 1])
+    min_coord = (min_index, c - 1)
+    backtrack[min_coord] = 100
+    print(f"Minimum pixel value at ({min_coord}): Energy value: {min_val}")
+    print(f"{r} x {c}")
+
+    #Now continue creating the seam
+    currentCoord = min_coord
+    for j in range(c - 1, 0, -1):
+        min_coord = (min_coord[0], j)
+        print(f"{min_coord[0]} + {j}")
+        print(min_coord)
+        backtrack[min_coord] = 100;
+
+    processed_filename = filename[:-4] + '_seam_' + str(vert_seams) + '_' + str(horizontal_seams) + '.pgm'
+    cv2.imwrite(processed_filename, backtrack)
+
     return M
+
 
 def find_seam(M):
     r, c = M.shape
@@ -43,20 +62,22 @@ def find_seam(M):
 
     # Find the position of the smallest element in the
     # first row of M
-    j = np.argmin(M[0])
-    for i in range(1, r):
-        for j in range(0, c):
-            print(f"Pixel at ({i},{j}): {M[i, j]}")
+
 
     return backtrack
-
 
 def carve_column(img):
     r, c = img.shape
 
+    print("Energymap")
     energy_map = compute_energy_map(img)
+    print("Energymap Completed")
+    print("Cumulative")
     M = calculate_cumulative(energy_map)
+    print("Cumulative Completed")
+    print("Backtrack")
     backtrack = find_seam(M)
+    print("Backtrack Complete")
 
     # Create a (r, c) matrix filled with the value True
     # We'll be removing all pixels from the image which
